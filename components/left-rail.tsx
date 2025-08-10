@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { Home, Brain, Vault, Settings } from "lucide-react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
+import { Home, Brain, Vault, Settings } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const items = [
   { icon: Home, label: "Home", href: "/" },
   { icon: Brain, label: "Agent", href: "/agent" },
   { icon: Vault, label: "Vault", href: "/vault" },
   { icon: Settings, label: "Settings", href: "/settings" },
-]
+];
 
 export default function LeftRail() {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <aside
@@ -28,7 +28,7 @@ export default function LeftRail() {
             className="rotate-180 [writing-mode:vertical-rl] text-sm tracking-wide text-zinc-400 select-none"
             aria-hidden="true"
           >
-            {"Spaces"}
+            {"Agent"}
           </span>
         </div>
       </div>
@@ -36,22 +36,24 @@ export default function LeftRail() {
       {/* Bottom icons */}
       <nav className="mb-2 flex flex-col items-center gap-5">
         {items.map(({ icon: Icon, label, href }) => {
-          const isActive = pathname === href
+          const isActive = pathname === href;
           return (
             <Link
               key={label}
               href={href}
               className={cn(
                 "group relative inline-flex size-6 items-center justify-center transition-colors",
-                isActive ? "text-orange-400" : "text-zinc-400 hover:text-zinc-200",
+                isActive
+                  ? "text-orange-400"
+                  : "text-zinc-400 hover:text-zinc-200"
               )}
               aria-label={label}
             >
               <Icon className="size-5 transition-transform group-hover:scale-110" />
             </Link>
-          )
+          );
         })}
       </nav>
     </aside>
-  )
+  );
 }
