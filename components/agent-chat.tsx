@@ -19,6 +19,7 @@ import {
   SendHorizontal,
   User,
   MessageSquare,
+  MessageSquarePlus,
   ChevronDown,
   ChevronRight,
   FileText,
@@ -122,6 +123,11 @@ export default function AgentChat() {
             },
           ],
         },
+        {
+          id: "search2",
+          name: "send_email",
+          args: { query: "Email this and that" },
+        },
       ],
       timestamp: new Date(Date.now() - 1000 * 60 * 4),
     },
@@ -158,6 +164,19 @@ export default function AgentChat() {
               title: "Budget Allocation Q4.xlsx",
               snippet:
                 "Marketing: $2.5M, Development: $1.8M, Operations: $1.2M, with contingency reserves of $500K...",
+              href: "#",
+            },
+          ],
+        },
+        {
+          id: "seearch2",
+          name: "search_web",
+          args: { query: "What is happening" },
+          resources: [
+            {
+              title: "Q4 Planning Document.pdf",
+              snippet:
+                "Our Q4 objectives include launching the new product line, expanding to 3 new markets, and achieving 40% revenue growth...",
               href: "#",
             },
           ],
@@ -268,6 +287,13 @@ export default function AgentChat() {
     }, 1000 + Math.random() * 1000);
   };
 
+  const handleNewChat = () => {
+    setIsLoading(false);
+    setInput("");
+    setMessages([]);
+    setShowChatHistory(false);
+  };
+
   const filteredChats = chats.filter(
     (chat) =>
       chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -276,6 +302,19 @@ export default function AgentChat() {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Header actions */}
+      <div className="p-6 pb-0">
+        <div className="max-w-3xl mx-auto flex justify-end">
+          <Button
+            variant="ghost"
+            onClick={handleNewChat}
+            className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 cursor-pointer"
+          >
+            <MessageSquarePlus className="mr-2 size-4" />
+            New Chat
+          </Button>
+        </div>
+      </div>
       {/* Welcome message when no messages */}
       {messages.length === 0 && (
         <div className="flex-1 flex items-center justify-center">
@@ -293,7 +332,7 @@ export default function AgentChat() {
             <Button
               variant="ghost"
               onClick={() => setShowChatHistory(true)}
-              className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40"
+              className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/40 cursor-pointer"
             >
               <MessageSquare className="mr-2 size-4" />
               View Chat History
@@ -360,19 +399,20 @@ export default function AgentChat() {
 
       {/* Chat History Modal */}
       <Dialog open={showChatHistory} onOpenChange={setShowChatHistory}>
-        <DialogContent className="bg-zinc-900/95 backdrop-blur border-white/10 text-zinc-100 max-w-2xl">
+        <DialogContent className="bg-zinc-900 backdrop-blur border-white/10 text-zinc-100 max-w-2xl z-[60]">
           <DialogHeader>
-            <DialogTitle className="font-display">Chat History</DialogTitle>
+            <DialogTitle className="font-display">
+              <div className="relative">
+                <CustomInput
+                  placeholder="Search chats..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-10"
+                />
+              </div>
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="relative">
-              <CustomInput
-                placeholder="Search chats..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10"
-              />
-            </div>
             <ScrollArea className="h-[400px]">
               <div className="space-y-2">
                 {filteredChats.map((chat) => (

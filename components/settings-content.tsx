@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -12,32 +12,120 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { User, Palette, Bot, Bell, Shield } from "lucide-react";
+import { User, Palette, Bot, Bell, Shield, LogOut } from "lucide-react";
 import CustomInput from "@/components/custom-input";
+import { useUser, useClerk } from "@clerk/nextjs";
 
 export default function SettingsContent() {
+  const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
   const [darkMode, setDarkMode] = useState(true);
   const [notifications, setNotifications] = useState(true);
   const [provider, setProvider] = useState("openai");
   const [model, setModel] = useState("gpt-4");
 
+  const [displayName, setDisplayName] = useState("");
+  const primaryEmail = user?.primaryEmailAddress?.emailAddress ?? "";
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (isLoaded && user) {
+      const unsafe =
+        (user.unsafeMetadata as Record<string, unknown> | undefined) || {};
+      const metadataDisplayName =
+        (unsafe["displayName"] as string | undefined) || undefined;
+      const nameFromClerk =
+        user.fullName ||
+        [user.firstName, user.lastName].filter(Boolean).join(" ");
+      setDisplayName(metadataDisplayName || nameFromClerk || "");
+    }
+  }, [isLoaded, user]);
+
+  async function handleSaveAccount() {
+    if (!user) return;
+    setSavingAccount(true);
+    try {
+      const existing =
+        (user.unsafeMetadata as Record<string, unknown> | undefined) || {};
+      await user.update({ unsafeMetadata: { ...existing, displayName } });
+    } finally {
+      setSavingAccount(false);
+    }
+  }
+
+  async function handleAvatarChange(file: File) {
+    if (!user || !file) return;
+    setIsUploadingAvatar(true);
+    try {
+      await user.setProfileImage({ file });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!user) return;
+    await user.delete();
+    await signOut({ redirectUrl: "/" });
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="space-y-8">
-        {/* Account Settings */}
+        {/* Account Settings (Clerk-powered) */}
         <SettingsSection
           icon={<User className="size-5" />}
           title="Account"
           description="Manage your profile and account information"
         >
           <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="Change profile photo"
+                onClick={() => fileInputRef.current?.click()}
+                className="group relative h-12 w-12 overflow-hidden rounded-full border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/20 cursor-pointer"
+                disabled={isUploadingAvatar}
+              >
+                {user?.imageUrl ? (
+                  <img
+                    src={user.imageUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover transition group-hover:opacity-90"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-zinc-800 text-xs text-zinc-300">
+                    Upload
+                  </div>
+                )}
+                <div className="pointer-events-none absolute inset-0 hidden items-center justify-center bg-black/30 opacity-0 transition group-hover:flex group-hover:opacity-100">
+                  <span className="text-[10px] uppercase tracking-wide text-white">
+                    {isUploadingAvatar ? "Uploading..." : "Change"}
+                  </span>
+                </div>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleAvatarChange(f);
+                }}
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
                 Display Name
               </label>
               <CustomInput
                 placeholder="Your name"
-                defaultValue="John Doe"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.currentTarget.value)}
                 className="h-10 px-0"
               />
             </div>
@@ -46,13 +134,18 @@ export default function SettingsContent() {
                 Email
               </label>
               <CustomInput
-                placeholder="your@email.com"
-                defaultValue="john@example.com"
-                className="h-10 px-0"
+                placeholder="email"
+                value={primaryEmail}
+                readOnly
+                className="h-10 px-0 opacity-80"
               />
             </div>
-            <Button className="bg-orange-500 text-black hover:bg-orange-400">
-              Save Changes
+            <Button
+              onClick={handleSaveAccount}
+              disabled={savingAccount}
+              className="bg-orange-500 text-black hover:bg-orange-400"
+            >
+              {savingAccount ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </SettingsSection>
@@ -72,21 +165,6 @@ export default function SettingsContent() {
                 </p>
               </div>
               <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Theme
-              </label>
-              <Select defaultValue="cosmic">
-                <SelectTrigger className="bg-transparent border-0 border-b border-white/40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-white/10">
-                  <SelectItem value="cosmic">Cosmic</SelectItem>
-                  <SelectItem value="minimal">Minimal</SelectItem>
-                  <SelectItem value="vibrant">Vibrant</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </SettingsSection>
@@ -235,14 +313,25 @@ export default function SettingsContent() {
               </div>
               <Switch defaultChecked={true} />
             </div>
-            <Button
-              variant="outline"
-              className="border-red-500/50 text-red-400 hover:bg-red-500/10 bg-transparent"
-            >
-              Delete Account
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => signOut({ redirectUrl: "/" })}
+                variant="outline"
+                className="border-white/20 text-zinc-300 hover:bg-white/5 bg-transparent"
+              >
+                <LogOut className="mr-2 h-4 w-4" /> Sign out
+              </Button>
+              <Button
+                onClick={handleDeleteAccount}
+                variant="outline"
+                className="border-red-500/50 text-red-400 hover:bg-red-500/10 bg-transparent"
+              >
+                Delete Account
+              </Button>
+            </div>
           </div>
         </SettingsSection>
+        {/* You can add custom flows for email/password/MFA later using Clerk user APIs */}
       </div>
     </div>
   );
